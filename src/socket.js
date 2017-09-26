@@ -13,6 +13,10 @@ const setMostRecentImage = (image) => {
 
 const socketHandlers = Object.freeze({
   imageUpload: data => setMostRecentImage(data),
+  clearCanvas: () => {
+    savedImage = undefined;
+    emitToAll('clearCanvas');
+  },
 });
 
 const onDisconnect = (sock) => {
