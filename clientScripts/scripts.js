@@ -2,31 +2,45 @@
 /* eslint-disable */
 'use strict';
 
-let socket;
-const SERVER_LOCATION = 'localhost:3000';
-const updatableTimer = document.querySelector('#updatableTimer');
-const updatableCounter = document.querySelector('#updatableCounter');
-const counterIncrementer = document.querySelector('#counterIncrement');
-
-let counter = 0;
+let connected = false;
 
 const socketHandlers = Object.freeze({
-  updateTimer: data => updatableTimer.innerHTML = `Timer: ${data.timer}`,
-  updateCounter: data => {
-    counter = data.counter;
-    updatableCounter.innerHTML = `Counter: ${counter}`;
+  image: (data) => {
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = data;
   },
 });
 
 const emitter = (eventName, data) => socket.emit('clientMsg', { eventName, data });
 
 window.onload = () => {
+  window.canvas = document.querySelector('#canvas');
+  window.ctx = canvas.getContext('2d');
+  window.uploadImage = document.querySelector('#uploadImage');
+
   window.socket = io.connect();
-  socket.on('connect', () => console.log('Connected to server...'));
+  
+  socket.on('connect', () => {
+    connected = true;
+    console.log('Connected to server...');
+  });
+  socket.on('disconnect', () => {
+    connected = false;
+    console.log('Disconnected from server...');
+  })
   socket.on('serverMsg', (data) => {
      if (socketHandlers[data.eventName]) return socketHandlers[data.eventName](data.data);
-     else console.warn(`Missing event handler for ${data.eventName}!`);
+     else console.warn(`Missing event handler for ${data.eventName}`);
   });
 
-  counterIncrementer.onclick = () => emitter('incrementCounter', {});
+  uploadImage.addEventListener('change', (e) => {
+    const reader = new FileReader();
+    reader.onload = event => emitter('imageUpload', event.target.result);
+    reader.readAsDataURL(e.target.files[0]);
+  });
 };

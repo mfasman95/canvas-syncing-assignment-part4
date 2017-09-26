@@ -2,21 +2,17 @@
 /* eslint-disable */
 'use strict';
 
-var socket = void 0;
-var SERVER_LOCATION = 'localhost:3000';
-var updatableTimer = document.querySelector('#updatableTimer');
-var updatableCounter = document.querySelector('#updatableCounter');
-var counterIncrementer = document.querySelector('#counterIncrement');
-
-var counter = 0;
+var connected = false;
 
 var socketHandlers = Object.freeze({
-  updateTimer: function updateTimer(data) {
-    return updatableTimer.innerHTML = 'Timer: ' + data.timer;
-  },
-  updateCounter: function updateCounter(data) {
-    counter = data.counter;
-    updatableCounter.innerHTML = 'Counter: ' + counter;
+  image: function image(data) {
+    var img = new Image();
+    img.onload = function () {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+    };
+    img.src = data;
   }
 });
 
@@ -25,15 +21,29 @@ var emitter = function emitter(eventName, data) {
 };
 
 window.onload = function () {
+  window.canvas = document.querySelector('#canvas');
+  window.ctx = canvas.getContext('2d');
+  window.uploadImage = document.querySelector('#uploadImage');
+
   window.socket = io.connect();
+
   socket.on('connect', function () {
-    return console.log('Connected to server...');
+    connected = true;
+    console.log('Connected to server...');
+  });
+  socket.on('disconnect', function () {
+    connected = false;
+    console.log('Disconnected from server...');
   });
   socket.on('serverMsg', function (data) {
-    if (socketHandlers[data.eventName]) return socketHandlers[data.eventName](data.data);else console.warn('Missing event handler for ' + data.eventName + '!');
+    if (socketHandlers[data.eventName]) return socketHandlers[data.eventName](data.data);else console.warn('Missing event handler for ' + data.eventName);
   });
 
-  counterIncrementer.onclick = function () {
-    return emitter('incrementCounter', {});
-  };
+  uploadImage.addEventListener('change', function (e) {
+    var reader = new FileReader();
+    reader.onload = function (event) {
+      return emitter('imageUpload', event.target.result);
+    };
+    reader.readAsDataURL(e.target.files[0]);
+  });
 };

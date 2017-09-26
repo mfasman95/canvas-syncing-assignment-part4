@@ -1,26 +1,18 @@
 const socketio = require('socket.io');
 
 let io;
-let timer = 0;
-let counter = 0;
+let savedImage;
 
-const emitToTall = (eventName, data) => io.sockets.emit('serverMsg', { eventName, data });
+const emitToAll = (eventName, data) => io.sockets.emit('serverMsg', { eventName, data });
 const emitToSocket = socket => (eventName, data) => socket.emit('serverMsg', { eventName, data });
 
-const updateTimer = () => {
-  timer++;
-  emitToTall('updateTimer', { timer });
-};
-
-
-const incrementCounter = () => {
-  counter++;
-  emitToTall('updateCounter', { counter });
+const setMostRecentImage = (image) => {
+  savedImage = image;
+  emitToAll('image', savedImage);
 };
 
 const socketHandlers = Object.freeze({
-  test: data => console.log(data),
-  incrementCounter,
+  imageUpload: data => setMostRecentImage(data),
 });
 
 const onDisconnect = (sock) => {
@@ -28,18 +20,21 @@ const onDisconnect = (sock) => {
   console.log(`Socket ${socket.id} has disconnected...`);
 };
 
-setInterval(updateTimer, 1000);
+const onConnect = (sock) => {
+  const socket = sock;
+  console.log(`Socket ${socket.id} has connected...`);
+
+  if (savedImage) emitToSocket(socket)('image', savedImage);
+};
 
 module.exports = Object.freeze({
   init: (server) => {
     io = socketio(server);
     io.sockets.on('connection', (socket) => {
-      emitToSocket(socket)('updateTimer', { timer });
-      emitToSocket(socket)('updateCounter', { counter });
-      console.log(`Socket ${socket.id} has connected...`);
+      onConnect(socket);
       socket.on('clientMsg', (data) => {
         if (socketHandlers[data.eventName]) return socketHandlers[data.eventName](data.data);
-        return console.warn(`Missing event handler for ${data.eventName}!`);
+        return console.warn(`Missing event handler for ${data.eventName}`);
       });
       socket.on('disconnect', () => onDisconnect(socket));
     });
